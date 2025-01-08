@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Tails from '../../assets/images/Tails.png';
 import Heads from '../../assets/images/Heads.png';
+import { Audio } from 'expo-av'; 
 
 type Side = 'Heads' | 'Tails';
 
@@ -11,16 +12,27 @@ export default function App() {
   const [userChoice, setUserChoice] = useState<Side | null>(null);
   const [gameState, setGameState] = useState('choosing');
   const [score, setScore] = useState(0);
+  const [totalPlays, setTotalPlays] = useState(0);
   const [animation] = useState(new Animated.Value(0));
   //starting with heads
   const spinValue = useRef(new Animated.Value(1)).current;
   const [isFlipping, setIsFlipping] = useState(false);
+  const [flipSound, setFlipSound] = useState<any>(null);
 
-  // Interpolations for flipping animation
-  // const rotateY = spinValue.interpolate({
-  //   inputRange: [0, 1],
-  //   outputRange: ['0deg', '0deg'],
-  // });
+  // Load the flip sound when the component is mounted
+  const loadSound = async () => {
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/sound/coin-flip.mp3') // Update this path to your MP3 file
+    );
+    setFlipSound(sound);
+  };
+
+  useEffect(() => {
+    loadSound();
+    if (flipSound) {
+      flipSound.unloadAsync();
+    }
+  }, []);
 
   // if spinValue is 0, front face is visible
   const frontOpacity = spinValue.interpolate({
@@ -48,11 +60,12 @@ export default function App() {
 
   const flipCoin = () => {
     if (!userChoice) return;
-    
     setIsFlipping(true);
+    // Play the flip sound when the coin starts flipping
+    flipSound?.replayAsync();
     
     const flipDuration = 100;
-    const totalDuration = 2000;
+    const totalDuration = 1200;
     const numberOfFlips = Math.floor(totalDuration / flipDuration);
 
     // Generate multiple flips
@@ -86,6 +99,7 @@ export default function App() {
       } else {
         setResult(`${coinResult}! You Lost 😢`);
       }
+      setTotalPlays(prev => prev + 1);
       setGameState('result');
       setIsFlipping(false);
     }, totalDuration);
@@ -98,7 +112,7 @@ export default function App() {
       style={styles.container}
     >
       <Text style={styles.title}>Coin Flip Game</Text>
-      <Text style={styles.score}>Score: {score}</Text>
+      <Text style={styles.score}>Score: {score}/{totalPlays}</Text>
       <Text style={styles.result}>{result}</Text>
      
       <Animated.View
