@@ -1,74 +1,222 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Tails from '../../assets/images/Tails.png';
+import Heads from '../../assets/images/Heads.png';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+type Side = 'Heads' | 'Tails';
 
-export default function HomeScreen() {
+export default function App() {
+  const [result, setResult] = useState('Choose a side!');
+  const [userChoice, setUserChoice] = useState<Side | null>(null);
+  const [gameState, setGameState] = useState('choosing');
+  const [score, setScore] = useState(0);
+  const [animation] = useState(new Animated.Value(0));
+  //starting with heads
+  const spinValue = useRef(new Animated.Value(1)).current;
+  const [isFlipping, setIsFlipping] = useState(false);
+
+  // Interpolations for flipping animation
+  // const rotateY = spinValue.interpolate({
+  //   inputRange: [0, 1],
+  //   outputRange: ['0deg', '0deg'],
+  // });
+
+  // if spinValue is 0, front face is visible
+  const frontOpacity = spinValue.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 0, 0],
+  });
+
+  // if spinValue is 1, back face is visible
+  const backOpacity = spinValue.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
+
+  const resetGame = () => {
+    setGameState('choosing');
+    setUserChoice(null);
+    setResult('Choose a side!');
+    animation.setValue(0);
+  };
+
+  const chooseSide = (choice: Side) => {
+    setUserChoice(choice);
+    flipCoin();
+  };
+
+  const flipCoin = () => {
+    if (!userChoice) return;
+    
+    setIsFlipping(true);
+    
+    const flipDuration = 100;
+    const totalDuration = 2000;
+    const numberOfFlips = Math.floor(totalDuration / flipDuration);
+
+    // Generate multiple flips
+    const flips = Array(numberOfFlips).fill(null).map((_, index) => {
+      return Animated.timing(spinValue, {
+        toValue: (index + 1) % 2, //to alternate between heads and tails
+        duration: flipDuration,
+        useNativeDriver: true,
+      });
+    });
+
+    // Run all animations in sequence
+    Animated.sequence(flips).start();
+
+    setTimeout(() => {
+      // Generate random result
+      const coinResult: Side = Math.random() < 0.5 ? 'Heads' : 'Tails';
+      const didWin = userChoice === coinResult;
+      
+      // Set final spin value based on result
+      // spinValue 0 = no rotation (shows Heads image)
+      // spinValue 1 = 180deg rotation (shows Tails image)
+      // Therefore:
+      // - For Tails result, we need rotation (setValue(1))
+      // - For Heads result, we need no rotation (setValue(0))
+      spinValue.setValue(coinResult === 'Heads' ? 1 : 0);
+      
+      if (didWin) {
+        setScore(prev => prev + 1);
+        setResult(`${coinResult}! You Won! 🎉`);
+      } else {
+        setResult(`${coinResult}! You Lost 😢`);
+      }
+      setGameState('result');
+      setIsFlipping(false);
+    }, totalDuration);
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <LinearGradient
+    // Background Linear Gradient
+      colors={['#7b86d7', '#bca0de', '#dfbdd8']}
+      style={styles.container}
+    >
+      <Text style={styles.title}>Coin Flip Game</Text>
+      <Text style={styles.score}>Score: {score}</Text>
+      <Text style={styles.result}>{result}</Text>
+     
+      <Animated.View
+        style={styles.coin}
+      >
+        <Animated.Image
+          source={Heads}
+          style={[
+            styles.face, 
+            { opacity: frontOpacity }
+          ]}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+
+        <Animated.Image
+          source={Tails}
+          style={[
+            styles.face, 
+            { opacity: backOpacity }
+          ]}
+        />
+      </Animated.View>
+
+      {gameState === 'choosing' && (
+        <View style={styles.choiceContainer}>
+          <TouchableOpacity 
+            style={[
+              styles.choiceButton,
+              isFlipping && styles.disabledButton
+            ]} 
+            onPress={() => chooseSide('Heads')}
+            disabled={isFlipping}
+          >
+            <Text style={styles.buttonText}>Choose Heads</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[
+              styles.choiceButton,
+              isFlipping && styles.disabledButton
+            ]} 
+            onPress={() => chooseSide('Tails')}
+            disabled={isFlipping}
+          >
+            <Text style={styles.buttonText}>Choose Tails</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {gameState === 'result' && (
+        <TouchableOpacity style={styles.button} onPress={resetGame}>
+          <Text style={styles.buttonText}>Play Again</Text>
+        </TouchableOpacity>
+      )}
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  score: {
+    fontSize: 18,
+    marginBottom: 30,
+    color: '#333',
+  },
+  coin: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20
+  },
+  face: {
     position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 100,
+  },
+  result: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    padding: 10,
+  },
+  choiceContainer: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  choiceButton: {
+    backgroundColor: '#f4e0c5',
+    padding: 15,
+    borderRadius: 10,
+    width: 'auto',
+    alignItems: 'center',
+  },
+  button: {
+    backgroundColor: '#f7d2ae',
+    padding: 15,
+    borderRadius: 10,
+    width: 200,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#000',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.5,
+    backgroundColor: '#cccccc',
   },
 });
