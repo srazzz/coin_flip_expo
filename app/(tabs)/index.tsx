@@ -15,7 +15,7 @@ export default function App() {
   const [totalPlays, setTotalPlays] = useState(0);
   const [animation] = useState(new Animated.Value(0));
   //starting with heads
-  const spinValue = useRef(new Animated.Value(1)).current;
+  const spinValue = useRef(new Animated.Value(0)).current;
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipSound, setFlipSound] = useState<any>(null);
 
@@ -91,7 +91,7 @@ export default function App() {
       // Therefore:
       // - For Tails result, we need rotation (setValue(1))
       // - For Heads result, we need no rotation (setValue(0))
-      spinValue.setValue(coinResult === 'Heads' ? 1 : 0);
+      spinValue.setValue(coinResult === 'Heads' ? 0 : 1);
       
       if (didWin) {
         setScore(prev => prev + 1);

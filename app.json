@@ -18,6 +18,8 @@
       }
     },
     "web": {
+      "name": "coin_flip_expo",
+      "shortName": "coin_flip_expo",
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/favicon.png"
